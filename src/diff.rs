@@ -222,7 +222,6 @@ pub fn print_alignment<T, F, G>(
     let show_small_change = !CFG.only_adds && !CFG.only_dels && !CFG.only_dels_and_adds;
     let show_match = !CFG.only_diff && show_small_change;
 
-    let only_diff = CFG.only_diff;
     let color = !CFG.no_color;
 
     let open_red = "\x1b[0;31m";
