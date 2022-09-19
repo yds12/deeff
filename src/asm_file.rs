@@ -4,8 +4,26 @@ use crate::Line;
 pub struct Block(Line, Vec<Line>);
 
 impl Block {
+    pub fn label(&self) -> &str {
+        match &self.0 {
+            Line::Label(label) => label.name(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn demangled_label(&self) -> &str {
+        match &self.0 {
+            Line::Label(label) => label.demangled_name(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn lines(&self) -> &Vec<Line> {
+        &self.1
+    }
+
     fn new(line: Line) -> Self {
-        let mut blocks = Vec::new();
+        let blocks = Vec::new();
         Self(line, blocks)
     }
 
@@ -38,6 +56,17 @@ impl Block {
 pub struct Section(Line, Vec<Block>, Block);
 
 impl Section {
+    pub fn name(&self) -> &str {
+        match &self.0 {
+            Line::SectionHeader(header) => header.name(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn blocks(&self) -> &Vec<Block> {
+        &self.1
+    }
+
     fn new(line: Line) -> Self {
         Self(line, Vec::new(), Block::new(Line::Blank))
     }
@@ -79,7 +108,7 @@ pub struct AsmFile(Vec<Section>, Section);
 
 impl AsmFile {
     pub fn new() -> Self {
-        let mut sections = Vec::new();
+        let sections = Vec::new();
         Self(sections, Section::new(Line::Blank))
     }
 
@@ -89,6 +118,16 @@ impl AsmFile {
         } else {
             self.push_to_last_section(line);
         }
+    }
+
+    pub fn sections(&self) -> &Vec<Section> {
+        &self.0
+    }
+
+    pub fn get_section(&self, name: &str) -> Option<&Section> {
+        self.sections()
+            .iter()
+            .find(|section| section.name() == name)
     }
 
     fn new_section(&mut self, line: Line) {
@@ -116,6 +155,19 @@ impl AsmFile {
         );
 
         (sum.0, sum.1, sum.2, sum.3, self.0.len())
+    }
+
+    pub fn print_section_stats(&self) {
+        for section in &self.0 {
+            let (instructions, blanks, others, labels) = section.get_stats();
+
+            println!("section {}:", section.name());
+            println!("  labels: {}", labels);
+            println!("  instructions: {}", instructions);
+            println!("  blanks: {}", blanks);
+            println!("  other: {}", others);
+            println!();
+        }
     }
 
     pub fn print_stats(&self) {

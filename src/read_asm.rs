@@ -1,7 +1,7 @@
 use crate::AsmFile;
 use crate::Line;
 
-pub fn read_asm(filename: &str) {
+pub fn read_asm(filename: &str) -> AsmFile {
     use std::io::BufRead;
     let file = std::fs::File::open(filename).expect(&format!("could not read {}", filename));
     let mut asm = AsmFile::new();
@@ -13,6 +13,8 @@ pub fn read_asm(filename: &str) {
         }
     }
 
-    println!("Stats for {}", filename);
-    asm.print_stats();
+    println!("Stats for {}:", filename);
+    asm.print_section_stats();
+
+    asm
 }

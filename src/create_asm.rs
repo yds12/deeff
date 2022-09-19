@@ -27,12 +27,7 @@ impl CreateAsm {
     }
 }
 
-pub fn init() -> CreateAsm {
-    let file1 = get_nth_arg(1);
-    let file2 = get_nth_arg(2);
-
-    println!("file1: {}, file2: {}", file1, file2);
-
+pub fn init(file1: &str, file2: &str) -> CreateAsm {
     let asm1 = create_asm_for_arg(&file1);
     let asm2 = create_asm_for_arg(&file2);
 
