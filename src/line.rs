@@ -1,7 +1,7 @@
+use crate::CFG;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::borrow::Cow;
-use crate::CFG;
 
 #[derive(Debug, PartialEq)]
 pub struct Offset(String);
@@ -48,9 +48,7 @@ fn demangle(id: &str) -> String {
     let st = rustc_demangle::demangle(id).to_string();
 
     if CFG.remove_hashes {
-        RE_HASH
-            .replace(&st, |_: &regex::Captures| "")
-            .to_string()
+        RE_HASH.replace(&st, |_: &regex::Captures| "").to_string()
     } else {
         st
     }
