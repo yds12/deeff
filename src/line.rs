@@ -49,7 +49,7 @@ fn demangle(id: &str) -> String {
 
     if CFG.remove_hashes {
         RE_HASH
-            .replace(&st, |caps: &regex::Captures| "")
+            .replace(&st, |_: &regex::Captures| "")
             .to_string()
     } else {
         st

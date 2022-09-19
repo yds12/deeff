@@ -32,6 +32,8 @@ pub struct Config {
     left_block_index: Option<usize>,
     #[clap(long, value_parser)]
     right_block_index: Option<usize>,
+    #[clap(long, value_parser)]
+    summary_type: Option<String>,
 }
 
 fn do_diff() {
@@ -43,18 +45,12 @@ fn do_diff() {
         .right_block_index
         .expect("need to supply --right-block-index");
 
-    let res = create_asm::init(&CFG.left_file, &CFG.right_file);
+    let left_asm = create_asm::create_asm_for_arg(&CFG.left_file);
+    let right_asm = create_asm::create_asm_for_arg(&CFG.right_file);
 
-    if res.is_ok() {
-        let file1 = res.get_first().unwrap();
-        let file2 = res.get_second().unwrap();
-
-        let asm1 = read_asm::read_asm(file1);
-        let asm2 = read_asm::read_asm(file2);
-
-        let alignment = align::align(&asm1.sections(), &asm2.sections(), |sec_a, sec_b| {
-            sec_a.name() == sec_b.name()
-        });
+    if let (Some(left_asm), Some(right_asm)) = (left_asm, right_asm) {
+        let asm1 = read_asm::read_asm_from_memory(left_asm);
+        let asm2 = read_asm::read_asm_from_memory(right_asm);
 
         let text1 = asm1.get_section(section).unwrap();
         let text2 = asm2.get_section(section).unwrap();
@@ -78,25 +74,23 @@ fn do_diff() {
             },
         );
     }
-
-    res.cleanup();
 }
 
 fn do_section_diff() {
     let section = CFG.section_name.as_ref().expect("need to supply --section-name");
 
-    let res = create_asm::init(&CFG.left_file, &CFG.right_file);
+    let left_asm = create_asm::create_asm_for_arg(&CFG.left_file);
+    let right_asm = create_asm::create_asm_for_arg(&CFG.right_file);
 
-    if res.is_ok() {
-        let file1 = res.get_first().unwrap();
-        let file2 = res.get_second().unwrap();
+    if let (Some(left_asm), Some(right_asm)) = (left_asm, right_asm) {
+        let asm1 = read_asm::read_asm_from_memory(left_asm);
+        let asm2 = read_asm::read_asm_from_memory(right_asm);
 
-        let asm1 = read_asm::read_asm(file1);
-        let asm2 = read_asm::read_asm(file2);
-
+        /*
         let alignment = align::align(&asm1.sections(), &asm2.sections(), |sec_a, sec_b| {
             sec_a.name() == sec_b.name()
         });
+        */
 
         let text1 = asm1.get_section(section).unwrap();
         let text2 = asm2.get_section(section).unwrap();
@@ -115,14 +109,23 @@ fn do_section_diff() {
             |bl1, bl2| bl1.label() == bl2.label(),
         );
     }
+}
 
-    res.cleanup();
+fn do_summary() {
+    let typ = CFG.summary_type.as_ref().expect("need to supply --summary-type");
+    let left_asm = create_asm::create_asm_for_arg(&CFG.left_file);
+
+    if let Some(left_asm) = left_asm {
+        let asm1 = read_asm::read_asm_from_memory(left_asm);
+
+    }
 }
 
 fn main() {
     match CFG.mode.as_str() {
         "section" => do_section_diff(),
         "block" => do_diff(),
+        "summary" => do_summary(),
         _ => panic!("unknown mode"),
     }
 }

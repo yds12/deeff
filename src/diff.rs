@@ -122,11 +122,7 @@ where
 
     matrix.calculate_lengths();
     let inds = matrix.find_indices();
-
-    dbg!(&inds);
-    let diff = complete_diff(inds);
-    dbg!(&diff);
-    diff
+    complete_diff(inds)
 }
 
 fn complete_diff(indices: Vec<(usize, usize)>) -> Vec<(Option<usize>, Option<usize>)> {
