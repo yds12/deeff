@@ -128,7 +128,18 @@ fn summary() {
     let left_asm = create_asm::create_asm_for_arg(&CFG.left_file);
 
     if let Some(left_asm) = left_asm {
-        let asm1 = read_asm::read_asm_from_memory(left_asm);
+        let asm = read_asm::read_asm_from_memory(left_asm);
+
+        match typ.as_ref() {
+            "global" => asm.print_stats(),
+            "sections" => asm.print_section_stats(),
+            "section" => {
+                let section_name = CFG.section.as_ref().expect("must provide --section");
+                let section = asm.get_section(section_name).expect("no section with provided name");
+                section.print_block_summary();
+            }
+            _ => panic!("unknown --summary-type")
+        }
     }
 }
 

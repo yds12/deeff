@@ -50,6 +50,11 @@ impl Block {
 
         (instructions, blanks, others)
     }
+
+    fn print_summary(&self) {
+        let width = 5;
+        println!("  {:>width$} {}", self.1.len(), self.demangled_label());
+    }
 }
 
 #[derive(Debug)]
@@ -65,6 +70,14 @@ impl Section {
 
     pub fn blocks(&self) -> &Vec<Block> {
         &self.1
+    }
+
+    pub fn print_block_summary(&self) {
+        println!("{} blocks in section {}:", self.1.len(), self.name());
+        println!("instructions / label name");
+        for block in &self.1 {
+            block.print_summary();
+        }
     }
 
     fn new(line: Line) -> Self {
