@@ -17,7 +17,7 @@ pub struct Config {
     #[clap(long, value_parser)]
     pub level: Option<String>,
     #[clap(long)]
-    pub no_hashes: bool,
+    pub no_hash: bool,
     #[clap(long, value_parser)]
     pub section: Option<String>,
     #[clap(long, value_parser)]

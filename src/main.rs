@@ -10,17 +10,13 @@ pub use config::CFG;
 pub use line::Line;
 
 fn line_diff() {
-    let section = CFG
-        .section
+    let section = CFG.section.as_ref().expect("need to supply --section");
+    let left = CFG.left_ix.expect("need to supply --left-ix");
+    let right = CFG.right_ix.expect("need to supply --right-ix");
+    let right_file = CFG
+        .right_file
         .as_ref()
-        .expect("need to supply --section");
-    let left = CFG
-        .left_ix
-        .expect("need to supply --left-ix");
-    let right = CFG
-        .right_ix
-        .expect("need to supply --right-ix");
-    let right_file = CFG.right_file.as_ref().expect("must provide second file name");
+        .expect("must provide second file name");
 
     let left_asm = create_asm::create_asm_for_arg(&CFG.left_file);
     let right_asm = create_asm::create_asm_for_arg(right_file);
@@ -38,6 +34,7 @@ fn line_diff() {
             (Line::Instruction(i), Line::Instruction(j)) => i.op() == j.op(),
             (a, b) => a == b,
         });
+
         diff::print_alignment(
             &lines1,
             &lines2,
@@ -52,11 +49,11 @@ fn line_diff() {
 }
 
 fn block_diff() {
-    let section = CFG
-        .section
+    let section = CFG.section.as_ref().expect("need to supply --section");
+    let right_file = CFG
+        .right_file
         .as_ref()
-        .expect("need to supply --section-name");
-    let right_file = CFG.right_file.as_ref().expect("must provide second file name");
+        .expect("must provide second file name");
 
     let left_asm = create_asm::create_asm_for_arg(&CFG.left_file);
     let right_asm = create_asm::create_asm_for_arg(right_file);
@@ -64,12 +61,6 @@ fn block_diff() {
     if let (Some(left_asm), Some(right_asm)) = (left_asm, right_asm) {
         let asm1 = read_asm::read_asm_from_memory(left_asm);
         let asm2 = read_asm::read_asm_from_memory(right_asm);
-
-        /*
-        let alignment = align::align(&asm1.sections(), &asm2.sections(), |sec_a, sec_b| {
-            sec_a.name() == sec_b.name()
-        });
-        */
 
         let text1 = asm1.get_section(section).unwrap();
         let text2 = asm2.get_section(section).unwrap();
@@ -89,7 +80,10 @@ fn block_diff() {
 }
 
 fn section_diff() {
-    let right_file = CFG.right_file.as_ref().expect("must provide second file name");
+    let right_file = CFG
+        .right_file
+        .as_ref()
+        .expect("must provide second file name");
 
     let left_asm = create_asm::create_asm_for_arg(&CFG.left_file);
     let right_asm = create_asm::create_asm_for_arg(right_file);
@@ -135,10 +129,12 @@ fn summary() {
             "sections" => asm.print_section_stats(),
             "section" => {
                 let section_name = CFG.section.as_ref().expect("must provide --section");
-                let section = asm.get_section(section_name).expect("no section with provided name");
+                let section = asm
+                    .get_section(section_name)
+                    .expect("no section with provided name");
                 section.print_block_summary();
             }
-            _ => panic!("unknown --summary-type")
+            _ => panic!("unknown --summary-type"),
         }
     }
 }
@@ -152,8 +148,8 @@ fn main() {
             Some("block") => block_diff(),
             Some("line") => line_diff(),
             None => panic!("must provide --level"),
-            _ => panic!("unknown --level")
-        }
+            _ => panic!("unknown --level"),
+        },
         _ => panic!("unknown --mode"),
     }
 }

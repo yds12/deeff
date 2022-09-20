@@ -19,8 +19,8 @@ struct DiffTable(Vec<DiffCell>, usize);
 
 impl std::fmt::Debug for DiffTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        let left = self.1;
-        let right = self.0.len() / left;
+        let right = self.1;
+        let left = self.0.len() / right;
 
         write!(f, "\n")?;
 
@@ -38,11 +38,12 @@ impl std::fmt::Debug for DiffTable {
 impl DiffTable {
     pub fn new(left: usize, right: usize) -> Self {
         let vec = (0..left * right).map(|_| false.into()).collect();
-        Self(vec, left)
+        Self(vec, right)
     }
 
     pub fn get(&self, left: usize, right: usize) -> &DiffCell {
-        &self.0[left * self.1 + right]
+        let index = left * self.1 + right;
+        &self.0[index]
     }
 
     pub fn set(&mut self, left: usize, right: usize, val: DiffCell) {
@@ -70,8 +71,8 @@ impl DiffTable {
     }
 
     pub fn calculate_lengths(&mut self) {
-        let left = self.1;
-        let right = self.0.len() / left;
+        let right = self.1;
+        let left = self.0.len() / right;
 
         for i in 0..left {
             for j in 0..right {
@@ -88,8 +89,8 @@ impl DiffTable {
 
     pub fn find_indices(&mut self) -> Vec<(usize, usize)> {
         let mut indices = Vec::new();
-        let left = self.1;
-        let right = self.0.len() / left;
+        let right = self.1;
+        let left = self.0.len() / right;
 
         let mut i = left;
         let mut j = right;
@@ -124,10 +125,15 @@ where
 
     matrix.calculate_lengths();
     let inds = matrix.find_indices();
-    complete_diff(inds)
+    let complete_diff = complete_diff(inds, left.len(), right.len());
+    complete_diff
 }
 
-fn complete_diff(indices: Vec<(usize, usize)>) -> Vec<(Option<usize>, Option<usize>)> {
+fn complete_diff(
+    indices: Vec<(usize, usize)>,
+    left: usize,
+    right: usize,
+) -> Vec<(Option<usize>, Option<usize>)> {
     let mut diff = Vec::new();
     let mut last_i = 0;
     let mut last_j = 0;
@@ -146,6 +152,16 @@ fn complete_diff(indices: Vec<(usize, usize)>) -> Vec<(Option<usize>, Option<usi
         diff.push((Some(i), Some(j)));
         last_i = i;
         last_j = j;
+    }
+
+    while last_i < left - 1 {
+        last_i += 1;
+        diff.push((Some(last_i), None));
+    }
+
+    while last_j < right - 1 {
+        last_j += 1;
+        diff.push((None, Some(last_j)));
     }
 
     diff
@@ -283,9 +299,41 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test() {
+    fn test_diff1() {
         let a = vec!["a", "b", "c", "d"];
         let b = vec!["a", "e", "b", "c", "d"];
-        diff(&a, &b, |c, d| c == d);
+        let d = diff(&a, &b, |c, d| c == d);
+
+        assert_eq!(
+            d,
+            vec![
+                (Some(0), Some(0)),
+                (None, Some(1)),
+                (Some(1), Some(2)),
+                (Some(2), Some(3)),
+                (Some(3), Some(4)),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_diff2() {
+        let a = vec![0, 1, 2, 3, 4, 5, 6];
+        let b = vec![0, 5, 1, 2, 3, 4];
+        let d = diff(&a, &b, |c, d| c == d);
+
+        assert_eq!(
+            d,
+            vec![
+                (Some(0), Some(0)),
+                (None, Some(1)),
+                (Some(1), Some(2)),
+                (Some(2), Some(3)),
+                (Some(3), Some(4)),
+                (Some(4), Some(5)),
+                (Some(5), None),
+                (Some(6), None),
+            ]
+        );
     }
 }

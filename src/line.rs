@@ -47,7 +47,7 @@ static RE_HASH: Lazy<Regex> =
 fn demangle(id: &str) -> String {
     let st = rustc_demangle::demangle(id).to_string();
 
-    if CFG.no_hashes {
+    if CFG.no_hash {
         RE_HASH.replace(&st, |_: &regex::Captures| "").to_string()
     } else {
         st
