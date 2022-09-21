@@ -1,195 +1,122 @@
-use crate::{Line, AsmLine};
+use crate::{AsmLine, Line};
 
 #[derive(Debug)]
-pub struct Block(Line, Vec<Line>);
-
-impl Block {
-    pub fn label(&self) -> &str {
-        match &self.0.inner() {
-            AsmLine::Label(label) => label.name(),
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn demangled_label(&self) -> &str {
-        match &self.0.inner() {
-            AsmLine::Label(label) => label.demangled_name(),
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn lines(&self) -> &Vec<Line> {
-        &self.1
-    }
-
-    fn new(line: Line) -> Self {
-        let blocks = Vec::new();
-        Self(line, blocks)
-    }
-
-    fn push(&mut self, line: Line) {
-        self.1.push(line);
-    }
-
-    fn get_stats(&self) -> (usize, usize, usize) {
-        let instructions = self
-            .1
-            .iter()
-            .filter(|line| matches!(line.inner(), AsmLine::Instruction(_)))
-            .count();
-        let blanks = self
-            .1
-            .iter()
-            .filter(|line| matches!(line.inner(), AsmLine::Blank))
-            .count();
-        let others = self
-            .1
-            .iter()
-            .filter(|line| matches!(line.inner(), AsmLine::Other))
-            .count();
-
-        (instructions, blanks, others)
-    }
-
-    fn print_summary(&self) {
-        let width = 5;
-        println!("  {:>width$} {}", self.1.len(), self.demangled_label());
-    }
+pub struct AsmFile {
+    raw: Vec<Line>,
 }
-
-#[derive(Debug)]
-pub struct Section(Line, Vec<Block>, Block);
-
-impl Section {
-    pub fn name(&self) -> &str {
-        match &self.0.inner() {
-            AsmLine::SectionHeader(header) => header.name(),
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn blocks(&self) -> &Vec<Block> {
-        &self.1
-    }
-
-    pub fn print_block_summary(&self) {
-        println!("{} blocks in section {}:", self.1.len(), self.name());
-        println!("instructions / label name");
-        for block in &self.1 {
-            block.print_summary();
-        }
-    }
-
-    fn new(line: Line) -> Self {
-        Self(line, Vec::new(), Block::new(Line::default()))
-    }
-
-    fn push(&mut self, line: Line) {
-        if let AsmLine::Label(_) = &line.inner() {
-            self.new_block(line);
-        } else {
-            self.push_to_last_block(line);
-        }
-    }
-
-    fn new_block(&mut self, line: Line) {
-        self.1.push(Block::new(line));
-    }
-
-    fn push_to_last_block(&mut self, line: Line) {
-        match self.1.len() {
-            l if l == 0 => self.2.push(line),
-            l => self.1[l - 1].push(line),
-        }
-    }
-
-    fn get_stats(&self) -> (usize, usize, usize, usize) {
-        let sum = self
-            .1
-            .iter()
-            .map(|block| block.get_stats())
-            .fold(self.2.get_stats(), |acc, bl_stat| {
-                (acc.0 + bl_stat.0, acc.1 + bl_stat.1, acc.2 + bl_stat.2)
-            });
-
-        (sum.0, sum.1, sum.2, self.1.len())
-    }
-}
-
-#[derive(Debug)]
-pub struct AsmFile(Vec<Section>, Section);
 
 impl AsmFile {
     pub fn new() -> Self {
-        let sections = Vec::new();
-        Self(sections, Section::new(Line::default()))
+        Self { raw: Vec::new() }
     }
 
     pub fn push(&mut self, line: Line) {
-        if let AsmLine::SectionHeader(_) = &line.inner() {
-            self.new_section(line);
-        } else {
-            self.push_to_last_section(line);
-        }
+        self.raw.push(line);
     }
 
-    pub fn sections(&self) -> &Vec<Section> {
-        &self.0
-    }
-
-    pub fn get_section(&self, name: &str) -> Option<&Section> {
-        self.sections()
+    pub fn sections(&self) -> Vec<Line> {
+        self.raw
             .iter()
-            .find(|section| section.name() == name)
+            .filter(|line| matches!(line.inner(), AsmLine::SectionHeader(_)))
+            .cloned()
+            .collect()
     }
 
-    fn new_section(&mut self, line: Line) {
-        self.0.push(Section::new(line));
-    }
+    pub fn get_block_lines(&self, section: &str, block_id: usize) -> Vec<Line> {
+        #[derive(Copy, Clone)]
+        enum State {
+            Start,
+            FoundSec(usize),
+            FoundBlock
+        };
 
-    fn push_to_last_section(&mut self, line: Line) {
-        match self.0.len() {
-            l if l == 0 => self.1.push(line),
-            l => self.0[l - 1].push(line),
+        let mut lines = Vec::new();
+        let mut state = State::Start;
+
+        for line in self.raw.iter() {
+            match (state, line.inner()) {
+                (State::Start, AsmLine::SectionHeader(s)) if s.name() == section => {
+                    state = State::FoundSec(0)
+                }
+                (State::Start, _) => continue,
+                (State::FoundSec(n), AsmLine::Label(_)) if n == block_id => state = State::FoundBlock,
+                (State::FoundSec(n), AsmLine::Label(_)) if n < block_id => state = State::FoundSec(n + 1),
+                (State::FoundBlock, AsmLine::Instruction(_)) => lines.push(line.clone()),
+                (State::FoundBlock, AsmLine::Label(_)) => break,
+                _ => continue,
+            }
         }
+
+        lines
     }
 
-    fn get_stats(&self) -> (usize, usize, usize, usize, usize) {
-        let sum = self.0.iter().map(|section| section.get_stats()).fold(
-            self.1.get_stats(),
-            |acc, sec_stat| {
-                (
-                    acc.0 + sec_stat.0,
-                    acc.1 + sec_stat.1,
-                    acc.2 + sec_stat.2,
-                    acc.3 + sec_stat.3,
-                )
-            },
-        );
+    pub fn get_section_blocks(&self, name: &str) -> Vec<Line> {
+        let mut blocks = Vec::new();
+        let mut started = false;
 
-        (sum.0, sum.1, sum.2, sum.3, self.0.len())
+        for line in self.raw.iter() {
+            match (started, line.inner()) {
+                (true, AsmLine::Label(_)) => blocks.push(line.clone()),
+                (true, AsmLine::SectionHeader(_)) => break,
+                (false, AsmLine::SectionHeader(section)) if section.name() == name => {
+                    started = true
+                }
+                _ => continue,
+            }
+        }
+
+        blocks
+    }
+
+    fn get_stats(&self, begin: usize, end: usize) -> (usize, usize, usize, usize, usize) {
+        let slice = &self.raw[begin..end];
+
+        slice
+            .iter()
+            .map(|line| match line.inner() {
+                AsmLine::SectionHeader(_) => (1usize, 0usize, 0usize, 0usize, 0usize),
+                AsmLine::Label(_) => (0, 1, 0, 0, 0),
+                AsmLine::Instruction(_) => (0, 0, 1, 0, 0),
+                AsmLine::Blank => (0, 0, 0, 1, 0),
+                AsmLine::Other => (0, 0, 0, 0, 1),
+            })
+            .fold((0, 0, 0, 0, 0), |a, b| {
+                (a.0 + b.0, a.1 + b.1, a.2 + b.2, a.3 + b.3, a.4 + b.4)
+            })
     }
 
     pub fn print_section_stats(&self) {
-        for section in &self.0 {
-            let (instructions, blanks, others, labels) = section.get_stats();
+        let section_ixs = self.raw
+            .iter()
+            .enumerate()
+            .filter(|(_, line)| matches!(line.inner(), AsmLine::SectionHeader(_)))
+            .map(|(i, line)| i)
+            .collect::<Vec<_>>();
 
-            println!("section {}:", section.name());
-            println!("  labels: {}", labels);
-            println!("  instructions: {}", instructions);
-            println!("  blanks: {}", blanks);
-            println!("  other: {}", others);
-            println!();
+        for pair in section_ixs.windows(2) {
+            if let &[sec1, sec2] = pair {
+                let (_, instructions, blanks, others, labels) = self.get_stats(sec1, sec2);
+                let sec_name = match self.raw[sec1].inner() {
+                    AsmLine::SectionHeader(sec) => sec.name(),
+                    _ => unreachable!()
+                };
+
+                println!("section {}:", sec_name);
+                println!("  labels: {}", labels);
+                println!("  instructions: {}", instructions);
+                println!("  blanks: {}", blanks);
+                println!("  other: {}", others);
+                println!();
+            }
         }
     }
 
     pub fn print_stats(&self) {
-        let (instructions, blanks, others, labels, sections) = self.get_stats();
-
-        println!("sections: {}", sections);
-        println!("labels: {}", labels);
-        println!("instructions: {}", instructions);
-        println!("blanks: {}", blanks);
-        println!("other: {}", others);
+        let stats = self.get_stats(0, self.raw.len());
+        println!("sections: {}", stats.0);
+        println!("labels: {}", stats.1);
+        println!("instructions: {}", stats.2);
+        println!("blanks: {}", stats.3);
+        println!("other: {}", stats.4);
     }
 }

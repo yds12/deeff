@@ -229,7 +229,7 @@ pub fn print_alignment<T, F, G>(
     alignment: Vec<(Option<usize>, Option<usize>)>,
     format: F,
     compare: G,
-    cfg: Config
+    cfg: Config,
 ) where
     F: Fn(&T) -> &str,
     G: Fn(&T, &T) -> bool,

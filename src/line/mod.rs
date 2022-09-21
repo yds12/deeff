@@ -5,14 +5,14 @@ mod instruction;
 mod label;
 mod mangle;
 
-use mangle::{demangle, demangle_no_hash};
 use instruction::Instruction;
 use label::Label;
+use mangle::{demangle, demangle_no_hash};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Offset(String);
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SectionHeader(String);
 
 impl SectionHeader {
@@ -21,7 +21,7 @@ impl SectionHeader {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AsmLine {
     Label(Label),
     Instruction(Instruction),
@@ -36,7 +36,7 @@ impl AsmLine {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Line {
     raw: String,
     inner: AsmLine,
@@ -46,7 +46,7 @@ impl std::default::Default for Line {
     fn default() -> Self {
         Self {
             raw: String::new(),
-            inner: AsmLine::Blank
+            inner: AsmLine::Blank,
         }
     }
 }

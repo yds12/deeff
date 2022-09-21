@@ -1,7 +1,7 @@
-use std::borrow::Cow;
 use super::{demangle, demangle_no_hash, Offset, RE_LABEL, RE_SYM};
+use std::borrow::Cow;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Label {
     /// Original label name
     name: String,
@@ -39,5 +39,22 @@ impl Label {
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn demangled() {
+        let line = "00000000000462c0 <_ZN4core7unicode12unicode_data2cc6lookup17h4f90392d718973aaE>:";
+        assert_eq!(Label::new(line).demangled_name(), "core::unicode::unicode_data::cc::lookup::h4f90392d718973aa");
+    }
+
+    #[test]
+    fn demangled_without_hash() {
+        let line = "00000000000462c0 <_ZN4core7unicode12unicode_data2cc6lookup17h4f90392d718973aaE>:";
+        assert_eq!(Label::new(line).clean_name(), "core::unicode::unicode_data::cc::lookup");
     }
 }

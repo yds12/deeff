@@ -1,6 +1,8 @@
-use super::{demangle, demangle_no_hash, Offset, RE_INSTR};
+use once_cell::sync::Lazy;
+use regex::Regex;
+use super::{demangle, demangle_no_hash, Offset, RE_INSTR, RE_SYM};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Instruction {
     op: String,
     operands: Vec<String>,
@@ -8,6 +10,9 @@ pub struct Instruction {
     operands_no_hash: Vec<String>,
     offset: Offset,
 }
+
+static RE_SQBR: Lazy<Regex> =
+    Lazy::new(|| Regex::new("<(.*)>").expect("bug: wrong regex"));
 
 impl Instruction {
     pub fn new(line: &str) -> Self {
@@ -21,8 +26,16 @@ impl Instruction {
         for i in 3..caps.len() {
             if let Some(operand) = caps.get(i) {
                 operands.push(operand.as_str().to_owned());
-                operands_demangled.push(demangle(operand.as_str()));
-                operands_no_hash.push(demangle_no_hash(operand.as_str()));
+
+                if let Some(caps) = RE_SQBR.captures(operand.as_str()) {
+                    let sym = caps.get(1).unwrap().as_str();
+                    dbg!(sym);
+                    operands_demangled.push(demangle(sym));
+                    operands_no_hash.push(demangle_no_hash(sym));
+                } else {
+                    operands_demangled.push(operand.as_str().to_owned());
+                    operands_no_hash.push(operand.as_str().to_owned());
+                }
             }
         }
 
@@ -41,6 +54,14 @@ impl Instruction {
 
     pub fn content(&self) -> String {
         format!("{} {}", self.op, self.operands.join(", "))
+    }
+
+    pub fn content_demangled(&self) -> String {
+        format!("{} {}", self.op, self.operands_demangled.join(", "))
+    }
+
+    pub fn content_clean(&self) -> String {
+        format!("{} {}", self.op, self.operands_no_hash.join(", "))
     }
 }
 
@@ -62,10 +83,12 @@ mod tests {
             "  465f22:	xor    esi,esi",
             "  465f24:	jmp    40d510 <__cxa_atexit@plt>",
             "  465f29:	nop    DWORD PTR [rax+0x0]",
+            "  6ec4:	jne    6ece <_ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$7reserve21do_reserve_and_handle17h95367aef4ab8a60eE+0xae>"
         ];
 
         for line in lines {
-            let _ = Instruction::new(line);
+            let i = Instruction::new(line);
+            dbg!(i);
         }
     }
 }

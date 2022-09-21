@@ -1,11 +1,14 @@
-use regex::Regex;
 use once_cell::sync::Lazy;
+use regex::Regex;
 
 static RE_HASH: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"::h[a-f0-9]{16}").expect("bug: wrong regex"));
 
 pub fn demangle(id: &str) -> String {
-    rustc_demangle::demangle(id).to_string()
+    dbg!(id);
+    let val = rustc_demangle::demangle(id).to_string();
+    dbg!(&val);
+    val
 }
 
 pub fn demangle_no_hash(id: &str) -> String {

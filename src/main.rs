@@ -25,12 +25,10 @@ fn line_diff(config: Config) {
         let asm1 = read_asm::read_asm_from_memory(left_asm);
         let asm2 = read_asm::read_asm_from_memory(right_asm);
 
-        let text1 = asm1.get_section(section).unwrap();
-        let text2 = asm2.get_section(section).unwrap();
+        let lines1 = asm1.get_block_lines(section, left);
+        let lines2 = asm2.get_block_lines(section, right);
 
-        let lines1 = text1.blocks()[left].lines();
-        let lines2 = text2.blocks()[right].lines();
-        let diff = diff::diff(lines1, lines2, |a, b| match (a.inner(), b.inner()) {
+        let diff = diff::diff(&lines1, &lines2, |a, b| match (a.inner(), b.inner()) {
             (AsmLine::Instruction(i), AsmLine::Instruction(j)) => i.op() == j.op(),
             (a, b) => a == b,
         });
@@ -44,7 +42,7 @@ fn line_diff(config: Config) {
                 (AsmLine::Instruction(i), AsmLine::Instruction(j)) => i.content() == j.content(),
                 (a, b) => a == b,
             },
-            config
+            config,
         );
     }
 }
@@ -63,19 +61,31 @@ fn block_diff(config: Config) {
         let asm1 = read_asm::read_asm_from_memory(left_asm);
         let asm2 = read_asm::read_asm_from_memory(right_asm);
 
-        let text1 = asm1.get_section(section).unwrap();
-        let text2 = asm2.get_section(section).unwrap();
+        let lines1 = asm1.get_section_blocks(section);
+        let lines2 = asm2.get_section_blocks(section);
 
-        let alignment = diff::align(&text1.blocks(), &text2.blocks(), |bl1, bl2| {
-            bl1.demangled_label() == bl2.demangled_label()
+        let nohash = config.no_hash;
+        let alignment = diff::align(&lines1, &lines2, |bl1, bl2| {
+            match (bl1.inner(), bl2.inner()) {
+                (AsmLine::Label(a), AsmLine::Label(b)) if nohash => a.clean_name() == b.clean_name(),
+                (AsmLine::Label(a), AsmLine::Label(b)) if !nohash => a.demangled_name() == b.demangled_name(),
+                (a, b) => a == b
+            }
         });
 
         diff::print_alignment(
-            &text1.blocks(),
-            &text2.blocks(),
+            &lines1,
+            &lines2,
             alignment,
-            |block| block.demangled_label(),
-            |bl1, bl2| bl1.label() == bl2.label(),
+            |block| match block.inner() {
+                AsmLine::Label(l) => l.demangled_name(),
+                _ => block.as_str()
+            },
+            |bl1, bl2| match (bl1.inner(), bl2.inner()) {
+                (AsmLine::Label(a), AsmLine::Label(b)) if nohash => a.clean_name() == b.clean_name(),
+                (AsmLine::Label(a), AsmLine::Label(b)) if !nohash => a.demangled_name() == b.demangled_name(),
+                (a, b) => a == b
+            },
             config,
         );
     }
@@ -94,17 +104,25 @@ fn section_diff(config: Config) {
         let asm1 = read_asm::read_asm_from_memory(left_asm);
         let asm2 = read_asm::read_asm_from_memory(right_asm);
 
-        let alignment = diff::align(&asm1.sections(), &asm2.sections(), |sec_a, sec_b| {
-            sec_a.name() == sec_b.name()
+        let alignment = diff::align(&asm1.sections(), &asm2.sections(),
+            |sec_a, sec_b| match (sec_a.inner(), sec_b.inner()) {
+            (AsmLine::SectionHeader(a), AsmLine::SectionHeader(b)) => a.name() == b.name(),
+            (a, b) => a == b
         });
 
         diff::print_alignment(
             &asm1.sections(),
             &asm2.sections(),
             alignment,
-            |sec| sec.name(),
-            |s1, s2| s1.name() == s2.name(),
-            config
+            |sec| match sec.inner() {
+                AsmLine::SectionHeader(h) => h.name(),
+                _ => sec.as_str()
+            },
+            |a, b| match (a.inner(), b.inner()) {
+                (AsmLine::SectionHeader(a), AsmLine::SectionHeader(b)) => a.name() == b.name(),
+                (a, b) => a == b
+            },
+            config,
         );
     }
 }
@@ -132,10 +150,13 @@ fn summary(config: Config) {
             "sections" => asm.print_section_stats(),
             "section" => {
                 let section_name = config.section.as_ref().expect("must provide --section");
+                // TODO
+                /*
                 let section = asm
                     .get_section(section_name)
                     .expect("no section with provided name");
-                section.print_block_summary();
+                 section.print_block_summary();
+                */
             }
             _ => panic!("unknown --summary-type"),
         }
