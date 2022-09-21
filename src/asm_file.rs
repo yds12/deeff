@@ -1,19 +1,19 @@
-use crate::Line;
+use crate::{Line, AsmLine};
 
 #[derive(Debug)]
 pub struct Block(Line, Vec<Line>);
 
 impl Block {
     pub fn label(&self) -> &str {
-        match &self.0 {
-            Line::Label(label) => label.name(),
+        match &self.0.inner() {
+            AsmLine::Label(label) => label.name(),
             _ => unreachable!(),
         }
     }
 
     pub fn demangled_label(&self) -> &str {
-        match &self.0 {
-            Line::Label(label) => label.demangled_name(),
+        match &self.0.inner() {
+            AsmLine::Label(label) => label.demangled_name(),
             _ => unreachable!(),
         }
     }
@@ -35,17 +35,17 @@ impl Block {
         let instructions = self
             .1
             .iter()
-            .filter(|line| matches!(line, Line::Instruction(_)))
+            .filter(|line| matches!(line.inner(), AsmLine::Instruction(_)))
             .count();
         let blanks = self
             .1
             .iter()
-            .filter(|line| matches!(line, Line::Blank))
+            .filter(|line| matches!(line.inner(), AsmLine::Blank))
             .count();
         let others = self
             .1
             .iter()
-            .filter(|line| matches!(line, Line::Other(_)))
+            .filter(|line| matches!(line.inner(), AsmLine::Other))
             .count();
 
         (instructions, blanks, others)
@@ -62,8 +62,8 @@ pub struct Section(Line, Vec<Block>, Block);
 
 impl Section {
     pub fn name(&self) -> &str {
-        match &self.0 {
-            Line::SectionHeader(header) => header.name(),
+        match &self.0.inner() {
+            AsmLine::SectionHeader(header) => header.name(),
             _ => unreachable!(),
         }
     }
@@ -81,11 +81,11 @@ impl Section {
     }
 
     fn new(line: Line) -> Self {
-        Self(line, Vec::new(), Block::new(Line::Blank))
+        Self(line, Vec::new(), Block::new(Line::default()))
     }
 
     fn push(&mut self, line: Line) {
-        if let Line::Label(_) = &line {
+        if let AsmLine::Label(_) = &line.inner() {
             self.new_block(line);
         } else {
             self.push_to_last_block(line);
@@ -122,11 +122,11 @@ pub struct AsmFile(Vec<Section>, Section);
 impl AsmFile {
     pub fn new() -> Self {
         let sections = Vec::new();
-        Self(sections, Section::new(Line::Blank))
+        Self(sections, Section::new(Line::default()))
     }
 
     pub fn push(&mut self, line: Line) {
-        if let Line::SectionHeader(_) = &line {
+        if let AsmLine::SectionHeader(_) = &line.inner() {
             self.new_section(line);
         } else {
             self.push_to_last_section(line);

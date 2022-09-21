@@ -12,16 +12,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "asmdiff"
-version = "0.1.0"
-dependencies = [
- "clap",
- "once_cell",
- "regex",
- "rustc-demangle",
-]
-
-[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -81,6 +71,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2850f2f5a82cbf437dd5af4d49848fbdfc27c157c3d010345776f952765261c5"
 dependencies = [
  "os_str_bytes",
+]
+
+[[package]]
+name = "deeff"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "once_cell",
+ "regex",
+ "rustc-demangle",
 ]
 
 [[package]]

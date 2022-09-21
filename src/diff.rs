@@ -1,4 +1,4 @@
-use crate::CFG;
+use crate::Config;
 
 #[derive(Debug)]
 struct DiffCell(usize);
@@ -229,16 +229,17 @@ pub fn print_alignment<T, F, G>(
     alignment: Vec<(Option<usize>, Option<usize>)>,
     format: F,
     compare: G,
+    cfg: Config
 ) where
     F: Fn(&T) -> &str,
     G: Fn(&T, &T) -> bool,
 {
-    let show_adds = !CFG.only_dels;
-    let show_dels = !CFG.only_adds;
-    let show_small_change = !CFG.only_adds && !CFG.only_dels && !CFG.only_dels_and_adds;
-    let show_match = !CFG.only_diff && show_small_change;
+    let show_adds = !cfg.only_dels;
+    let show_dels = !cfg.only_adds;
+    let show_small_change = !cfg.only_adds && !cfg.only_dels && !cfg.only_dels_and_adds;
+    let show_match = !cfg.only_diff && show_small_change;
 
-    let color = !CFG.no_color;
+    let color = !cfg.no_color;
 
     let open_red = "\x1b[0;31m";
     let open_green = "\x1b[0;32m";

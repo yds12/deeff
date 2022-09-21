@@ -1,7 +1,4 @@
 use clap::Parser as _;
-use once_cell::sync::Lazy;
-
-pub static CFG: Lazy<Config> = Lazy::new(|| Config::parse());
 
 // TODO: separate commands for what is now the mode
 
@@ -38,4 +35,10 @@ pub struct Config {
     pub only_dels: bool,
     #[clap(long)]
     pub only_dels_and_adds: bool,
+}
+
+impl Config {
+    pub fn get() -> Self {
+        Self::parse()
+    }
 }
